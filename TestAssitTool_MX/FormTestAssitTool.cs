@@ -12,6 +12,7 @@ using System.IO;
 using System.IO.Ports;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace TestAssitTool
 {
@@ -63,6 +64,10 @@ namespace TestAssitTool
         private long received_count2 = 0;//接收计数
         private long send_count2 = 0;//发送计数
 
+        private StringBuilder bd1 = new StringBuilder();
+        private StringBuilder bd2 = new StringBuilder();
+        private StringBuilder bd3 = new StringBuilder();
+        private StringBuilder bd4 = new StringBuilder();
 
         #region  PLC以太网 通信
         delegate void dele_actOpen();        //dele_actOpen d_actOpen = actOpen;
@@ -488,6 +493,40 @@ namespace TestAssitTool
             this.Close();
         }
 
+        /// <summary>
+        /// 将返回的16进制数据两两一组解析,得到char型，传给dll计算CRC
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        #region 将返回的16进制数据两两一组解析,得到char型，传给dll计算CRC#char[] HexStringToCharArray(string s)
+        public static char[] HexStringToCharArray(string s)
+        {
+            s = s.Replace(" ", "");
+            char[] buffer = new char[s.Length / 2];
+            for (int i = 0; i < s.Length; i += 2)
+
+                buffer[i / 2] = (char)Convert.ToByte(s.Substring(i, 2), 16);
+            return buffer;
+        }
+        #endregion 将返回的16进制数据两两一组解析,得到char型，传给dll计算CRC#
+
+        /// <summary>
+        /// 将返回的16进制数据亮亮一组解析，用串口发送
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns></returns>
+        #region 将返回的16进制数据两两一组解析,用串口发送byte[] HexStringToByteArray(string s)
+        public static byte[] HexStringToByteArray(string s)
+        {
+            s = s.Replace(" ", "");
+            byte[] buffer = new byte[s.Length / 2];
+            for (int i = 0; i < s.Length; i += 2)
+
+                buffer[i / 2] = (byte)Convert.ToByte(s.Substring(i, 2), 16);
+            return buffer;
+        }
+        #endregion 将返回的16进制数据两两一组解析,用串口发送
+
 
         #region SerialPort1
         void comm_DataReceived(object sender, SerialDataReceivedEventArgs e)
@@ -497,11 +536,37 @@ namespace TestAssitTool
             received_count += n;//增加接收计数
             comm.Read(buf, 0, n);//读取缓冲数据
             builder.Clear();//清除字符串构造器的内容
+            bd1.Clear();
             bool flag = true;
             List<string> lstbuf1 = new List<string>();//填充到这个临时列表中
             //因为要访问ui资源，所以需要使用invoke方式同步ui。
             this.Invoke((EventHandler)(delegate
             {
+
+                foreach (byte b in buf)
+                {
+                    bd1.Append(b.ToString("X2") );
+                }
+                if (bd1.Length == 16)
+                {
+                    string msg2Send = bd1.ToString();
+                    Random rad = new Random();//实例化随机数产生器rad；
+                    int value = rad.Next(256, 3000);//用rad生成大于等于1000，小于等于9999的随机
+                    msg2Send = string.Format("{0}0302{1:x4}", msg2Send.Substring(0, 2),value );
+                    char[] get = HexStringToCharArray(msg2Send);//16进制两两转10进制
+                    int CRC_10 = crc16_modbus(get, 6); //算出CRC校验值-10进制
+                    string CRC_16 = CRC_10.ToString("x");
+                    if (CRC_16.Length < 4)
+                        CRC_16 = "0" + CRC_16;
+                    string CRCCode = CRC_16.Substring(2, 2) + CRC_16.Substring(0, 2);
+                    string sendCode = msg2Send + CRCCode;//获得010300000001840a
+                    byte[] array = HexStringToByteArray(sendCode);
+                    comm.Write(array, 0, array.Length);
+                    Thread.Sleep(2000);
+                
+                   // comm.Write("0011223344");
+                }
+
                 //判断是否是显示为16禁止
                 if (checkBoxHexView.Checked)
                 {
