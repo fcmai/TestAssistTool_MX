@@ -34,10 +34,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Interop.ActUtlTypeLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="AxInterop.ActUtlTypeLib">
+      <HintPath>dll\AxInterop.ActUtlTypeLib.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.ActUtlTypeLib">
+      <HintPath>dll\Interop.ActUtlTypeLib.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>bin\Debug\Interop.ActUtlTypeLib.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

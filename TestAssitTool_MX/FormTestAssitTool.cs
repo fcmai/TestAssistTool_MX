@@ -540,9 +540,8 @@ namespace TestAssitTool
             bool flag = true;
             List<string> lstbuf1 = new List<string>();//填充到这个临时列表中
             //因为要访问ui资源，所以需要使用invoke方式同步ui。
-            this.Invoke((EventHandler)(delegate
+           // this.Invoke((EventHandler)(delegate
             {
-
                 foreach (byte b in buf)
                 {
                     bd1.Append(b.ToString("X2") );
@@ -551,18 +550,19 @@ namespace TestAssitTool
                 {
                     string msg2Send = bd1.ToString();
                     Random rad = new Random();//实例化随机数产生器rad；
-                    int value = rad.Next(256, 3000);//用rad生成大于等于1000，小于等于9999的随机
-                    msg2Send = string.Format("{0}0302{1:x4}", msg2Send.Substring(0, 2),value );
+                    int value = rad.Next(256, 1000);//用rad生成大于等于1000，小于等于9999的随机
+                    msg2Send = string.Format("{0}0304{1:X4}{2:X4}{3:X4}{4:X4}", msg2Send.Substring(0, 2),value, rad.Next(256, 3000), rad.Next(256, 3000), rad.Next(256, 3000));
                     char[] get = HexStringToCharArray(msg2Send);//16进制两两转10进制
                     int CRC_10 = crc16_modbus(get, 6); //算出CRC校验值-10进制
                     string CRC_16 = CRC_10.ToString("x");
-                    if (CRC_16.Length < 4)
-                        CRC_16 = "0" + CRC_16;
+                    
+                    CRC_16 = "0000" + CRC_16; 
+                    CRC_16 = CRC_16.Substring(CRC_16.Length - 4, 4);//
                     string CRCCode = CRC_16.Substring(2, 2) + CRC_16.Substring(0, 2);
                     string sendCode = msg2Send + CRCCode;//获得010300000001840a
                     byte[] array = HexStringToByteArray(sendCode);
                     comm.Write(array, 0, array.Length);
-                    Thread.Sleep(2000);
+                    Thread.Sleep(20);
                 
                    // comm.Write("0011223344");
                 }
@@ -577,7 +577,11 @@ namespace TestAssitTool
                         //builder.Append(Convert .ToString (b ,16)+ " ");
                     }
                     string timeNow = System.DateTime.Now.ToString();
-                    this.txtReceive1.AppendText("[" + timeNow + "]" + builder.ToString() + "\r\n");
+                    this.Invoke(
+                        (EventHandler)
+                            (delegate
+                            {
+                                this.txtReceive1.AppendText("[" + timeNow + "]" + builder.ToString() + "\r\n"); }));
                 }
                 else
                 {
@@ -594,16 +598,27 @@ namespace TestAssitTool
                     // builder.Append(Encoding.ASCII.GetString(buf));
                     string timeNow = System.DateTime.Now.ToString();
                     if (builder.ToString().Contains("\r"))
-                        this.txtReceive1.AppendText("[" + timeNow + "]" + builder.ToString());
+                        this.Invoke(
+                            (EventHandler)
+                                (delegate { this.txtReceive1.AppendText("[" + timeNow + "]" + builder.ToString()); }));
                     else
-                        this.txtReceive1.AppendText("[" + timeNow + "]" + builder.ToString() + "\r\n");
+                        this.Invoke(
+                            (EventHandler)
+                                (delegate
+                                {
+                                    this.txtReceive1.AppendText("[" + timeNow + "]" + builder.ToString() + "\r\n"); }));
 
                 }
                 //追加的形式添加到文本框末端，并滚动到最后。
 
                 //修改接收计数
-                labelGetCount.Text = "Get:" + received_count.ToString();
-            }));
+                this.Invoke(
+                    (EventHandler)
+                        (delegate
+                        {
+                            labelGetCount.Text = "Get:" + received_count.ToString(); }));
+            }
+            // }));
         }
         void comm_DataReceived2(object sender, SerialDataReceivedEventArgs e)
         {
